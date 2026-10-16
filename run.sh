@@ -1,37 +1,36 @@
 #!/usr/bin/env bash
-# Start Diffusers engine with a project-local or external venv.
-#
-# Prefer an external venv so Next.js/Turbopack never walks Python symlinks
-# under services/diffusers-engine/.venv (those point at /usr/bin and panic NFT).
+# Start the Diffusers engine with the venv install.sh made (or DIFFUSERS_VENV).
 set -euo pipefail
 ENGINE_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ENGINE_DIR"
 
+# A venv counts only when its Python runs: a venv moved or left behind by an older install has
+# scripts pointing at an interpreter that is gone.
+venv_ok() {
+  [[ -x "$1/bin/uvicorn" ]] && "$1/bin/python" -c '' >/dev/null 2>&1
+}
+
 resolve_venv() {
-  if [[ -n "${DIFFUSERS_VENV:-}" && -x "${DIFFUSERS_VENV}/bin/uvicorn" ]]; then
+  if [[ -n "${DIFFUSERS_VENV:-}" ]] && venv_ok "${DIFFUSERS_VENV}"; then
     printf '%s\n' "$DIFFUSERS_VENV"
     return 0
   fi
-  # XDG cache (outside the Next.js project tree)
-  local cache_venv="${XDG_CACHE_HOME:-$HOME/.cache}/comfyui-prompt-studio/diffusers-engine/.venv"
-  if [[ -x "${cache_venv}/bin/uvicorn" ]]; then
-    printf '%s\n' "$cache_venv"
+  # install.sh's venv, next to this script
+  if venv_ok "${ENGINE_DIR}/.venv"; then
+    printf '%s\n' "${ENGINE_DIR}/.venv"
     return 0
   fi
-  # Legacy in-tree venv (works, but can break `next build` / `next dev` with Turbopack)
-  if [[ -x "${ENGINE_DIR}/.venv/bin/uvicorn" ]]; then
-    printf '%s\n' "${ENGINE_DIR}/.venv"
+  # Older Castcut installs kept it in the XDG cache
+  local cache_venv="${XDG_CACHE_HOME:-$HOME/.cache}/comfyui-prompt-studio/diffusers-engine/.venv"
+  if venv_ok "${cache_venv}"; then
+    printf '%s\n' "$cache_venv"
     return 0
   fi
   return 1
 }
 
 if ! VENV="$(resolve_venv)"; then
-  CACHE_VENV="${XDG_CACHE_HOME:-$HOME/.cache}/comfyui-prompt-studio/diffusers-engine/.venv"
-  echo "Missing Diffusers venv — create it outside the Next.js tree:" >&2
-  echo "  python -m venv \"$CACHE_VENV\"" >&2
-  echo "  \"$CACHE_VENV/bin/pip\" install -r \"$ENGINE_DIR/requirements.txt\"" >&2
-  echo "Or set DIFFUSERS_VENV=/path/to/venv" >&2
+  echo "No working Diffusers venv — run $ENGINE_DIR/install.sh (or set DIFFUSERS_VENV=/path/to/venv)." >&2
   exit 1
 fi
 
