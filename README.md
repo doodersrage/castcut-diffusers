@@ -1,4 +1,34 @@
-# Diffusers engine (Castcut)
+# Castcut Diffusers engine
+
+An optional, stills-only render engine for [Castcut](https://github.com/doodersrage/castcut): a
+FastAPI service that runs Castcut's ComfyUI-style graphs (txt2img, limited img2img / inpaint)
+through Hugging Face Diffusers. ComfyUI stays Castcut's main engine; use this only if you want
+Diffusers instead (Settings → Inference engine → Diffusers).
+
+## Install
+
+**From Castcut:** Settings → Inference engine → Diffusers → **Install engine**. Castcut downloads
+a release of this repo into its data folder, runs `install.sh` (a Python venv plus
+`requirements.txt`) and starts the engine when it's needed. Needs Python 3.10+ and a CUDA GPU on
+the machine running Castcut.
+
+**By hand** (another machine, or Castcut in Docker):
+
+```bash
+git clone https://github.com/doodersrage/castcut-diffusers.git
+cd castcut-diffusers
+./install.sh                 # venv in .venv (DIFFUSERS_VENV=/path to put it elsewhere)
+COMFYUI_ROOT=/opt/comfyui ./run.sh --host 0.0.0.0 --port 8190
+```
+
+Then point Castcut at it: set `DIFFUSERS_API_URL=http://<host>:8190` on the Castcut server (or the
+engine URL in Settings). `COMFYUI_ROOT` lets the engine load the checkpoints, LoRAs and
+ControlNets already in your ComfyUI models folder.
+
+Tests: `.venv/bin/python -m pytest tests`.
+
+---
+
 
 Optional **stills-only** FastAPI companion for Castcut (txt2img + limited img2img/inpaint). **ComfyUI is the primary generate path** (Lightning bf16, Dynamic VRAM, Final/Max enrich, Play film). Use this engine only when Settings → Inference engine is set to Diffusers, or `PROMPT_ENGINE=diffusers`.
 
